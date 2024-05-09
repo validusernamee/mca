@@ -1,0 +1,35 @@
+;EXPERIMENT NO:5 After making sure that Problem statement 1, 2 and 3 works properly,
+;write an ALP to get data from the PC and transfer it to the PC (Both
+  ;side communication) at various baud rate.
+
+    ORG 0000H 		; Program start
+	
+	MOV SCON,#50H 	; Init serial mode 1
+	MOV TMOD,#20H	 ; Init Timer 1 mode 2
+	MOV TH1,#-3 	; Init Timer 1 for baud rate
+	SETB TR1 		; Start Timer 1
+	
+	MOV DPTR,#MES 	; Load message address
+	
+	L1: CLR A 		; Clear A
+	MOVC A,@A+DPTR ; Move code byte to A
+	JZ REC 			; Jump if A is zero
+	
+	MOV SBUF,A 			; Transmit A
+	JNB TI,$ 		; Jump if transmit not ready
+	CLR TI			 ; Clear transmit flag
+	INC DPTR			 ; Increment pointer
+	SJMP L1 		; Loop
+	
+	REC:CLR RI 		; Clear receive flag
+	JNB RI,$ 		; Jump if no data received
+	MOV A,SBUF 		; Move received data to A
+	MOV P1,A 		; Output A to Port 1
+	SJMP REC 		; Loop back to REC
+	
+	ORG 500H ; Message address
+	MES:DB "WELCOME TO VIIT ",0X0A,0X0D ; Welcome message with newline
+	DB "NAME: Yash Rathod",0X0A,0X0D; Name message with newline
+	DB "ROLL NO: 213045",0X0A,0X0D ; Roll number with newline
+	DB "RECEIVED PROGRAM",0X0A,0X0D,0; Received confirmation
+	END
