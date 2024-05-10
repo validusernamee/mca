@@ -1,0 +1,100 @@
+#define F_CPU 8000000UL /* Define CPU Frequency e.g. here its 8MHz */
+#include <avr/io.h> /* Include AVR std. library file */
+#include <util/delay.h> /* Include inbuilt defined Delay header file */
+//#include <string.h>
+#include <stdio.h>
+#include "lcd.h"
+#define degree_symbol 0xdf
+void ADC_Init(){
+	DDRA = 0x00; /* Make ADC port as input */
+	ADCSRA = 0x87; /* Enable ADC, with freq/128 */
+	ADMUX = 0x40; /* ADC channel: 0 */
+}
+int ADC_Read(char channel)
+{
+	ADMUX = 0x40 | (channel & 0x07); /* set input channel to read */
+	ADCSRA |= (1<<ADSC); /* Start ADC conversion */
+	while (!(ADCSRA & (1<<ADIF))); /* Wait until end of conversion by polling ADC
+	interrupt flag */
+	ADCSRA |= (1<<ADIF); /* Clear interrupt flag */
+	_delay_ms(1); /* Wait a little bit */
+	return ADCW; /* Return ADC word */
+}
+int main()
+{
+	char Temperature[10];
+	float celsius;
+	DDRB=0XFF;
+	LCD_Init(); /* initialize 16x2 LCD*/
+	ADC_Init(); /* initialize ADC*/
+	while(1)
+	{
+		LCD_Command(0x80); /*cursor at home position */
+		LCD_String("Ganesh Shinde");
+		LCD_Command(0xc0);
+		celsius = (ADC_Read(0)*4.88); // Read channel 0 where LM35 connected,
+		5V/1024=4.88mV
+		celsius = (celsius/10.00);
+		sprintf(Temperature,"T1=%d%cC ", (int)celsius, degree_symbol);/* convert
+		integer value to ASCII string */
+		LCD_String(Temperature);
+		LCD_Command(0xc8);
+		celsius = (ADC_Read(1)*4.88); // Read channel 0 where LM35 connected,
+		5V/1024=4.88mV
+		celsius = (celsius/10.00);
+		sprintf(Temperature,"T2=%d%cC ", (int)celsius, degree_symbol);/* convert
+		integer value to ASCII string */
+		LCD_String(Temperature);
+ }
+}
+
+
+
+
+ #define LCD_Data_Dir DDRC /* Define LCD data port direction */
+ #define LCD_Command_Dir DDRD /* Define LCD command port direction register */
+ #define LCD_Data_Port PORTC /* Define LCD data port */
+ #define LCD_Command_Port PORTD /* Define LCD data port */
+ #define RS PD7 /* Define Register Select signal pin */
+ #define RW PD6 /* Define Read/Write signal pin */
+ #define EN PD5 /* Define Enable signal pin */
+ void LCD_Command(unsigned char cmnd)
+ {
+	 LCD_Data_Port= cmnd;
+	 LCD_Command_Port &= ~(1<<RS); /* RS=0 command reg. */
+	 LCD_Command_Port &= ~(1<<RW); /* RW=0 Write operation */
+	 LCD_Command_Port |= (1<<EN); /* Enable pulse */
+	 _delay_us(1);
+	 LCD_Command_Port &= ~(1<<EN);
+	 _delay_ms(2);
+ }
+ void LCD_Char (unsigned char char_data) /* LCD data write function */
+ {
+	 LCD_Data_Port= char_data;
+	 LCD_Command_Port |= (1<<RS); /* RS=1 Data reg. */
+	 LCD_Command_Port &= ~(1<<RW); /* RW=0 write operation */
+	 LCD_Command_Port |= (1<<EN); /* Enable Pulse */
+	 _delay_us(1);
+	 LCD_Command_Port &= ~(1<<EN);
+	 _delay_ms(2); /* Data write delay */
+ }
+ void LCD_Init (void) /* LCD Initialize function */
+ {
+	 LCD_Command_Dir = 0xFF; /* Make LCD command port direction as o/p */
+	 LCD_Data_Dir = 0xFF; /* Make LCD data port direction as o/p */
+	 _delay_ms(20); /* LCD Power ON delay always >15ms */
+	 LCD_Command (0x38); /* Initialization of 16X2 LCD in 8bit mode */
+	 LCD_Command (0x0C); /* Display ON Cursor OFF */
+	 LCD_Command (0x06); /* Auto Increment cursor */
+	 LCD_Command (0x01); /* clear display */
+	 _delay_ms(2); /* Clear display command delay> 1.63 ms */
+	 LCD_Command (0x80); /* Cursor at home position */
+ }
+ void LCD_String (char *str) /* Send string to LCD function */
+ {
+	 int i;
+	 for(i=0;str[i]!=0;i++) /* Send each char of string till the NULL */
+	 {
+	LCD_Char (str[i]);
+	}
+}
